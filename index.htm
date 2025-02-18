@@ -70,7 +70,10 @@
 
     <body>
         <div class="grid" id="grid"></div>
-        <button id="nextStep">Next step</button>
+        <div>
+            <button id="nextStep">Next step</button>
+            <button id="complete">Complete</button>
+        </div>
         <script>
             const gridSize = 10;
             const start = { x: 0, y: 0 };
@@ -170,6 +173,7 @@
                         numSteps++;
                         if (openSet.length === 0) {
                             alert('No solution found');
+                            return 'done';
                         } else {
                             openSet.sort((a, b) => a.f - b.f || a.h - b.h);
                             const current = openSet.shift();
@@ -180,6 +184,7 @@
                                     cells[parent.y][parent.x].classList.add("path");
                                 }
                                 alert(`Solution found in ${numSteps} steps.`);
+                                return 'done';
                             } else {
                                 for (const neighbor of getNeighbors(current)) {
                                     if (closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) continue;
@@ -221,6 +226,7 @@
             }
 
             document.getElementById('nextStep').onclick = astar.next;
+            document.getElementById('complete').onclick = () => { while(astar.next() !== 'done'); };
         </script>
     </body>
 
