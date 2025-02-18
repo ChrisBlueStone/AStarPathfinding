@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>A* Pathfinding Demo</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #f4f4f4;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(10, minmax(9vh, 1fr));
+                grid-gap: 2px;
+                box-sizing: border-box;
+            }
+
+            .cell {
+                aspect-ratio: 1 / 1;
+                border: 1px solid #000;
+            }
+
+            .cell.start {
+                background-color: blue;
+                color: white;
+            }
+
+            .cell.end {
+                background-color: red;
+                color: white;
+            }
+
+            .cell.path {
+                background-color: forestgreen;
+            }
+
+            .cell.blocked {
+                background-color: black;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="grid" id="grid"></div>
+        <button id="nextStep">Next step</button>
+        <script>
+            const gridSize = 10;
+            const start = { x: 0, y: 0 };
+            const end = { x: 9, y: 9 };
+            const grid = document.getElementById("grid");
+            const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
+            const blockedCells = [
+                [2, 6], [2, 7],
+                [3, 3], [3, 4], [3, 5],
+                [4, 3],
+                [5, 3], [5, 7], [5, 8], [5, 9],
+                [6, 0], [6, 2], [6, 5],
+                [7, 4],
+                [8, 1], [8, 2], [8, 3], [8, 4], [8, 8],
+                [9, 8]
+            ].map(([x, y]) => ({ x, y }));
+
+            function createGrid() {
+                cells.forEach((col, y) => {
+                    col.forEach((_, x, array) => {
+                        const cell = document.createElement("div");
+                        cell.classList.add("cell");
+                        cell.dataset.x = x;
+                        cell.dataset.y = y;
+                        grid.appendChild(cell);
+                        array[x] = cell;
+                    });
+                });
+                cells[start.y][start.x].classList.add("start");
+                cells[end.y][end.x].classList.add("end");
+                blockedCells.forEach(({ x, y }) => cells[y][x].classList.add("blocked"));
+            }
+
+            function heuristic(a, b) {
+                return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+            }
+
+            function getNeighbors(node) {
+                return [
+                        { x: node.x + 1, y: node.y },
+                        { x: node.x - 1, y: node.y },
+                        { x: node.x, y: node.y + 1 },
+                        { x: node.x, y: node.y - 1 }
+                    ].filter(n => n.x >= 0
+                        && n.y >= 0
+                        && n.x < gridSize
+                        && n.y < gridSize
+                        && !cells[n.y][n.x].classList.contains("blocked"))
+            }
+
+            function findPath(start, end) {
+                let numSteps = 0;
+                const openSet = [{ x: start.x, y: start.y, g: 0, h: heuristic(start, end), f: 0, parent: null }];
+                const closedSet = [];
+
+                return {
+                    next: function() {
+                        numSteps++;
+                        if (openSet.length === 0) {
+                            return 'done';
+                        } else {
+                            openSet.sort((a, b) => a.f - b.f);
+                            let current = openSet.shift();
+                            closedSet.push(current);
+
+                            if (current.x === end.x && current.y === end.y) {
+                                for (let parent = current.parent; parent; parent = parent.parent) {
+                                    cells[parent.y][parent.x].classList.add("path");
+                                }
+                                alert(`Solution found in ${numSteps} steps.`);
+                                return 'done';
+                            }
+
+                            for (const neighbor of getNeighbors(current)) {
+                                if (closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) continue;
+                                const g = current.g + 1;
+                                const h = heuristic(neighbor, end);
+                                const f = g + h;
+                                const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
+
+                                if (!existing || g < existing.g) {
+                                    openSet.push({ ...neighbor, g, h, f, parent: current });
+                                    cells[neighbor.y][neighbor.x].innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            createGrid();
+            var astar = findPath(start, end);
+            document.getElementById('nextStep').onclick = astar.next;
+        </script>
+    </body>
+
+</html>
