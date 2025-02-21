@@ -73,6 +73,7 @@
         <div>
             <button id="nextStep">Next step</button>
             <button id="complete">Complete</button>
+            <button id="clearAll">Clear All</button>
         </div>
         <script>
             const gridSize = 10;
@@ -228,7 +229,14 @@
             }
 
             document.getElementById('nextStep').onclick = astar.next;
-            document.getElementById('complete').onclick = () => { while(astar.next() !== 'done'); };
+            document.getElementById('complete').onclick = () => { while (astar.next() !== 'done'); };
+            document.getElementById('clearAll').onclick = function () {
+                var blockedCells = [...document.getElementsByClassName('blocked')];
+                for (var cell of blockedCells) {
+                    cell.classList.remove('blocked');
+                }
+                astar.restart();
+            };
         </script>
     </body>
 
