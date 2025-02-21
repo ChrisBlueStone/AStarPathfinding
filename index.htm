@@ -16,11 +16,22 @@
                 background-color: #f4f4f4;
             }
 
+            .flex {
+                display: flex;
+            }
+
+            .modeMenu {
+                display: flex;
+                flex-direction: column;
+                align-items: end;
+            }
+
             .grid {
                 display: grid;
                 grid-template-columns: repeat(10, minmax(9vh, 1fr));
                 grid-gap: 2px;
                 box-sizing: border-box;
+                user-select: none;
             }
 
             .cell {
@@ -57,7 +68,7 @@
                 padding: 2px;
             }
 
-            .cell:hover .icons {
+            .grid:not(.startMode):not(.endMode):not(.blockMode) .cell:hover .icons {
                 display: flex;
             }
 
@@ -65,17 +76,54 @@
                 cursor: pointer;
                 font-size: 12px;
             }
+
+            .blockMode .cell {
+                cursor: cell;
+            }
+
+            .startMode .cell,
+            .endMode .cell
+            {
+                cursor: alias;
+            }
         </style>
     </head>
 
     <body>
-        <div class="grid" id="grid"></div>
+        <div class="flex">
+            <div class="modeMenu">
+                Mode
+                <span><label for="default">✳0<input id="defaultMode" name="mode" type="radio" value="default"></label></span>
+                <span><label for="startMode">⭐1<input id="startMode" name="mode" type="radio" value="startMode"></label></span>
+                <span><label for="endMode">🏁2<input id="endMode" name="mode" type="radio" value="endMode"></label></span>
+                <span><label for="blockMode">🏴3<input id="blockMode" name="mode" type="radio" value="blockMode" checked></label></span>
+            </div>
+            <div class="grid" id="grid"></div>
+        </div>
         <div>
             <button id="nextStep">Next step</button>
             <button id="complete">Complete</button>
             <button id="clearAll">Clear All</button>
         </div>
         <script>
+            function switchMode(mode) {
+                grid.classList.remove('startMode', 'endMode', 'blockMode');
+                mode && grid.classList.add(mode);
+            }
+            var defaultMode = document.getElementById('defaultMode');
+            var startMode = document.getElementById('startMode');
+            var endMode = document.getElementById('endMode');
+            var blockMode = document.getElementById('blockMode');
+
+            defaultMode.onchange = () => switchMode('');
+            startMode.onchange = () => switchMode('startMode');
+            endMode.onchange = () => switchMode('endMode');
+            blockMode.onchange = () => switchMode('blockMode');
+
+            document.onkeypress = function (e) {
+                [defaultMode, startMode, endMode, blockMode][e.key]?.click();
+            }
+
             const gridSize = 10;
             const start = { x: 0, y: 0 };
             const end = { x: 9, y: 9 };
@@ -107,7 +155,7 @@
 
                         const icons = document.createElement("div");
                         icons.classList.add("icons");
-                        icons.innerHTML = '<span class="icon">⭐</span><span class="icon">🏁</span><span class="icon">✖</span>';
+                        icons.innerHTML = '<span class="icon">⭐</span><span class="icon">🏁</span><span class="icon">🏴</span>';
 
                         icons.children[0].addEventListener("click", () => setStart(x, y));
                         icons.children[1].addEventListener("click", () => setEnd(x, y));
@@ -162,13 +210,13 @@
                     restart,
                     setStart: function (x, y) {
                         cells[start.y][start.x].classList.remove('start');
-                        start = { x, y };
+                        start = { x: +x, y: +y };
                         cells[start.y][start.x].classList.add('start');
                         restart();
                     },
                     setEnd: function (x, y) {
                         cells[end.y][end.x].classList.remove('end');
-                        end = { x, y };
+                        end = { x: +x, y: +y };
                         cells[end.y][end.x].classList.add('end');
                         restart();
                     },
@@ -237,6 +285,60 @@
                 }
                 astar.restart();
             };
+            grid.onmousedown = function(e) {
+                var cell = e.target.closest('.cell');
+                if (cell
+                    && grid.classList.contains('blockMode')
+                    && cell.classList.contains('cell'))
+                {
+                    astar.restart();
+                    if (cell.classList.contains('blocked')) {
+                        cell.classList.remove('blocked');
+                        startUnblockingTiles();
+                    } else {
+                        cell.classList.add('blocked');
+                        startBlockingTiles();
+                    }
+                } else if (cell && grid.classList.contains('startMode')) {
+                    setStart(cell.dataset.x, cell.dataset.y);
+                    startMarkStart();
+                } else if (cell && grid.classList.contains('endMode')) {
+                    setEnd(cell.dataset.x, cell.dataset.y);
+                    startMarkFinish();
+                }
+            }
+            grid.onmouseup = function() { grid.onmouseover = null; }
+            grid.onmouseleave = function() { grid.onmouseover = null; }
+            function startBlockingTiles() {
+                grid.onmouseover = function(e) {
+                    if (e.target.classList.contains('cell') && !e.target.classList.contains('blocked')) {
+                        e.target.classList.add('blocked');
+                    }
+                }
+            }
+            function startUnblockingTiles() {
+                grid.onmouseover = function(e) {
+                    if (e.target.classList.contains('cell') && e.target.classList.contains('blocked')) {
+                        e.target.classList.remove('blocked');
+                    }
+                }
+            }
+            function startMarkStart() {
+                grid.onmouseover = function (e) {
+                    if (e.target.classList.contains('cell')) {
+                        setStart(e.target.dataset.x, e.target.dataset.y);
+                    }
+                }
+            }
+            function startMarkFinish() {
+                grid.onmouseover = function (e) {
+                    if (e.target.classList.contains('cell')) {
+                        setEnd(e.target.dataset.x, e.target.dataset.y);
+                    }
+                }
+            }
+
+            document.querySelector(':checked').onchange();
         </script>
     </body>
 
