@@ -241,7 +241,7 @@
                             const current = openSet.shift();
                             closedSet.push(current);
 
-                            var cell = cells[current.y][current.x]
+                            var cell = cells[current.y][current.x];
                             cell.classList.remove('open');
                             cell.classList.add('closed');
 
@@ -259,10 +259,16 @@
                                         const f = g + h;
                                         const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
 
-                                        if (!existing || g < existing.g) {
+                                        if (!existing) {
                                             openSet.push({ ...neighbor, g, h, f, parent: current });
                                             cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
                                             cells[neighbor.y][neighbor.x].classList.add('open');
+                                        } else if (g < existing.g) {
+                                            existing.g = g;
+                                            existing.h = h;
+                                            existing.f = f;
+                                            existing.parent = current;
+                                            cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
                                         }
                                     }
                                 }
