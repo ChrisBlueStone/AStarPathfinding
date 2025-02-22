@@ -40,6 +40,16 @@
                 position: relative;
             }
 
+            .cell .arrow {
+                display: none;
+                rotate: var(--angle);
+                text-align: center;
+            }
+
+            .cell .data:not(:empty) + .arrow {
+                display: block;
+            }
+
             .cell.end {
                 background-color: red;
                 color: white;
@@ -137,18 +147,7 @@
             const end = { x: 9, y: 9 };
             const grid = document.getElementById("grid");
             const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
-            const blockedCells = [
-                [2, 0], [8, 0],
-                [4, 1], [7, 1],
-                [0, 2], [3, 2], [6, 2],
-                [2, 3], [5, 3], [8, 3],
-                [1, 4], [7, 4],
-                [3, 5], [6, 5], [9, 5],
-                [2, 6], [5, 6], [8, 6],
-                [1, 7], [4, 7],
-                [0, 8], [3, 8], [6, 8], [8, 8],
-                [5, 9]
-            ].map(([x, y]) => ({ x, y }));
+            const blockedCells = [[3,0],[3,1],[3,2],[3,3],[7,4],[7,5],[7,6],[4,7],[5,7],[6,7],[7,7]].map(([x, y]) => ({ x, y }));
 
             function createGrid() {
                 cells.forEach((col, y) => {
@@ -169,7 +168,12 @@
                         icons.children[1].addEventListener("click", () => setEnd(x, y));
                         icons.children[2].addEventListener("click", () => toggleBlock(x, y));
 
+                        const arrow = document.createElement("div");
+                        arrow.classList.add("arrow");
+                        arrow.append('⬆');
+
                         cell.appendChild(data);
+                        cell.appendChild(arrow);
                         cell.appendChild(icons);
                         grid.appendChild(cell);
                         array[x] = cell;
@@ -258,17 +262,22 @@
                                         const h = heuristic(neighbor, end);
                                         const f = g + h;
                                         const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
+                                        const neighborCell = cells[neighbor.y][neighbor.x];
 
                                         if (!existing) {
+                                            const parentAngle = Math.atan2(neighbor.y - current.y, neighbor.x - current.x) - 0.5 * Math.PI;
+                                            neighborCell.style = `--angle:${parentAngle}rad`
                                             openSet.push({ ...neighbor, g, h, f, parent: current });
-                                            cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
-                                            cells[neighbor.y][neighbor.x].classList.add('open');
+                                            neighborCell.querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                            neighborCell.classList.add('open');
                                         } else if (g < existing.g) {
+                                            const parentAngle = Math.atan2(neighbor.y - current.y, neighbor.x - current.x) - 0.5 * Math.PI;
+                                            neighborCell.style = `--angle:${parentAngle}rad`
                                             existing.g = g;
                                             existing.h = h;
                                             existing.f = f;
                                             existing.parent = current;
-                                            cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                            neighborCell.querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
                                         }
                                     }
                                 }
