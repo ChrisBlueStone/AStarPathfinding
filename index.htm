@@ -40,13 +40,21 @@
                 position: relative;
             }
 
-            .cell.start {
-                background-color: blue;
+            .cell.end {
+                background-color: red;
                 color: white;
             }
 
-            .cell.end {
-                background-color: red;
+            .cell.open {
+                background-color: rgba(0, 128, 0, 0.5);
+            }
+
+            .cell.closed {
+                background-color: rgba(255, 0, 0, 0.25);
+            }
+
+            .cell.start {
+                background-color: blue;
                 color: white;
             }
 
@@ -200,6 +208,9 @@
                     openSet.push({ x: start.x, y: start.y, g: 0, h: heuristic(start, end), parent: null });
                     closedSet.splice(0);
 
+                    [...document.getElementsByClassName('cell')].forEach(e => e.classList.remove('open', 'closed'));
+                    cells[start.y][start.x].classList.add('open');
+
                     for (const cell of document.getElementsByClassName('data')) {
                         cell.innerText = '';
                         cell.parentNode.classList.remove('path');
@@ -230,6 +241,10 @@
                             const current = openSet.shift();
                             closedSet.push(current);
 
+                            var cell = cells[current.y][current.x]
+                            cell.classList.remove('open');
+                            cell.classList.add('closed');
+
                             if (current.x === end.x && current.y === end.y) {
                                 for (let parent = current.parent; parent; parent = parent.parent) {
                                     cells[parent.y][parent.x].classList.add("path");
@@ -238,15 +253,17 @@
                                 return 'done';
                             } else {
                                 for (const neighbor of getNeighbors(current)) {
-                                    if (closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) continue;
-                                    const g = current.g + 1;
-                                    const h = heuristic(neighbor, end);
-                                    const f = g + h;
-                                    const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
+                                    if (!closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) {
+                                        const g = current.g + 1;
+                                        const h = heuristic(neighbor, end);
+                                        const f = g + h;
+                                        const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
 
-                                    if (!existing || g < existing.g) {
-                                        openSet.push({ ...neighbor, g, h, f, parent: current });
-                                        cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                        if (!existing || g < existing.g) {
+                                            openSet.push({ ...neighbor, g, h, f, parent: current });
+                                            cells[neighbor.y][neighbor.x].querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                            cells[neighbor.y][neighbor.x].classList.add('open');
+                                        }
                                     }
                                 }
                             }
@@ -287,24 +304,25 @@
             };
             grid.onmousedown = function(e) {
                 var cell = e.target.closest('.cell');
-                if (cell
-                    && grid.classList.contains('blockMode')
-                    && cell.classList.contains('cell'))
-                {
-                    astar.restart();
-                    if (cell.classList.contains('blocked')) {
-                        cell.classList.remove('blocked');
-                        startUnblockingTiles();
-                    } else {
-                        cell.classList.add('blocked');
-                        startBlockingTiles();
+                if (cell && e.buttons === 1) {
+                    if (grid.classList.contains('blockMode')
+                        && cell.classList.contains('cell'))
+                    {
+                        astar.restart();
+                        if (cell.classList.contains('blocked')) {
+                            cell.classList.remove('blocked');
+                            startUnblockingTiles();
+                        } else {
+                            cell.classList.add('blocked');
+                            startBlockingTiles();
+                        }
+                    } else if (grid.classList.contains('startMode')) {
+                        setStart(cell.dataset.x, cell.dataset.y);
+                        startMarkStart();
+                    } else if (grid.classList.contains('endMode')) {
+                        setEnd(cell.dataset.x, cell.dataset.y);
+                        startMarkFinish();
                     }
-                } else if (cell && grid.classList.contains('startMode')) {
-                    setStart(cell.dataset.x, cell.dataset.y);
-                    startMarkStart();
-                } else if (cell && grid.classList.contains('endMode')) {
-                    setEnd(cell.dataset.x, cell.dataset.y);
-                    startMarkFinish();
                 }
             }
             grid.onmouseup = function() { grid.onmouseover = null; }
