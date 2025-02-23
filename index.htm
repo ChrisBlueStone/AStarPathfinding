@@ -38,6 +38,7 @@
                 aspect-ratio: 1 / 1;
                 border: 1px solid #000;
                 position: relative;
+                overflow: hidden;
             }
 
             .cell .arrow {
@@ -46,7 +47,7 @@
                 text-align: center;
             }
 
-            .cell .data:not(:empty) + .arrow {
+            .cell .data:not(:empty)+.arrow {
                 display: block;
             }
 
@@ -101,8 +102,7 @@
             }
 
             .startMode .cell,
-            .endMode .cell
-            {
+            .endMode .cell {
                 cursor: alias;
             }
         </style>
@@ -111,11 +111,29 @@
     <body>
         <div class="flex">
             <div class="modeMenu">
-                Mode
-                <span><label for="default">✳0<input id="defaultMode" name="mode" type="radio" value="default"></label></span>
-                <span><label for="startMode">⭐1<input id="startMode" name="mode" type="radio" value="startMode"></label></span>
-                <span><label for="endMode">🏁2<input id="endMode" name="mode" type="radio" value="endMode"></label></span>
-                <span><label for="blockMode">🏴3<input id="blockMode" name="mode" type="radio" value="blockMode" checked></label></span>
+                <div>
+                    <label>Mode:</label>
+                    <select id="mode">
+                        <option value="defaultMode">0✳ Mixed</option>
+                        <option value="startMode">1⭐ Mark start</option>
+                        <option value="endMode">2🏁 Mark end</option>
+                        <option value="blockMode" selected="">3🏴 Block</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Neighbors:</label>
+                    <select id="neighbors">
+                        <option value="4" selected="">4</option>
+                        <option value="8">8</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Heuristic:</label>
+                    <select id="heuristic">
+                        <option value="steps" selected="">Steps</option>
+                        <option value="distance">Distance</option>
+                    </select>
+                </div>
             </div>
             <div class="grid" id="grid"></div>
         </div>
@@ -127,20 +145,18 @@
         <script>
             function switchMode(mode) {
                 grid.classList.remove('startMode', 'endMode', 'blockMode');
-                mode && grid.classList.add(mode);
+                mode !== 'defaultMode' && grid.classList.add(mode);
             }
-            var defaultMode = document.getElementById('defaultMode');
-            var startMode = document.getElementById('startMode');
-            var endMode = document.getElementById('endMode');
-            var blockMode = document.getElementById('blockMode');
-
-            defaultMode.onchange = () => switchMode('');
-            startMode.onchange = () => switchMode('startMode');
-            endMode.onchange = () => switchMode('endMode');
-            blockMode.onchange = () => switchMode('blockMode');
+            const modeSelect = document.getElementById('mode');
+            const heuristicSelect = document.getElementById('heuristic');
+            const neighborsSelect = document.getElementById('neighbors');
 
             document.onkeypress = function (e) {
-                [defaultMode, startMode, endMode, blockMode][e.key]?.click();
+                const option = modeSelect.children[e.key]
+                if (option) {
+                    option.selected = true;
+                    modeSelect.dispatchEvent(new Event('change'));
+                }
             }
 
             const gridSize = 10;
@@ -148,7 +164,7 @@
             const end = { x: 9, y: 9 };
             const grid = document.getElementById("grid");
             const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
-            const blockedCells = [[3,0],[3,1],[3,2],[3,3],[7,4],[7,5],[7,6],[4,7],[5,7],[6,7],[7,7]].map(([x, y]) => ({ x, y }));
+            const blockedCells = [[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]].map(([x, y]) => ({ x, y }));
 
             function createGrid() {
                 cells.forEach((col, y) => {
@@ -185,11 +201,16 @@
                 blockedCells.forEach(({ x, y }) => cells[y][x].classList.add("blocked"));
             }
 
-            function heuristic(a, b) {
+            function stepHeuristic(a, b) {
                 return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
             }
 
-            function getNeighbors(node) {
+            function distanceHeuristic(a, b) {
+                const offset = [a.x - b.x, a.y - b.y];
+                return Math.sqrt(offset[0] * offset[0] + offset[1] * offset[1]);
+            }
+
+            function getAdjacentNeighbors(node) {
                 return [
                     { x: node.x + 1, y: node.y },
                     { x: node.x - 1, y: node.y },
@@ -202,7 +223,29 @@
                     && !cells[n.y][n.x].classList.contains("blocked"))
             }
 
+            function getAllNeighbors(node) {
+                return [
+                    { x: node.x + 1, y: node.y },
+                    { x: node.x - 1, y: node.y },
+                    { x: node.x, y: node.y + 1 },
+                    { x: node.x, y: node.y - 1 },
+                    { x: node.x + 1, y: node.y + 1 },
+                    { x: node.x + 1, y: node.y - 1 },
+                    { x: node.x - 1, y: node.y - 1 },
+                    { x: node.x - 1, y: node.y + 1 }
+                ].filter(n => n.x >= 0
+                    && n.y >= 0
+                    && n.x < gridSize
+                    && n.y < gridSize
+                    && !cells[n.y][n.x].classList.contains("blocked"))
+            }
+
+            let getNeighbors = neighborsSelect.value === '8' ? getAllNeighbors : getAdjacentNeighbors;
+            let heuristic = heuristicSelect.value === 'steps' ? stepHeuristic : distanceHeuristic;
+
             function findPath(start, end) {
+                let startCell = cells[start.y][start.x];
+                let endCell = cells[end.y][end.x];
                 let numSteps = 0;
                 const openSet = [{ x: start.x, y: start.y, g: 0, h: heuristic(start, end), f: 0, parent: null }];
                 const closedSet = [];
@@ -214,7 +257,7 @@
                     closedSet.splice(0);
 
                     [...document.getElementsByClassName('cell')].forEach(e => e.classList.remove('open', 'closed'));
-                    cells[start.y][start.x].classList.add('open');
+                    startCell.classList.add('open');
 
                     for (const cell of document.getElementsByClassName('data')) {
                         cell.innerText = '';
@@ -225,15 +268,17 @@
                 return {
                     restart,
                     setStart: function (x, y) {
-                        cells[start.y][start.x].classList.remove('start');
+                        startCell.classList.remove('start');
                         start = { x: +x, y: +y };
-                        cells[start.y][start.x].classList.add('start');
+                        startCell = cells[y][x];
+                        startCell.classList.add('start');
                         restart();
                     },
                     setEnd: function (x, y) {
-                        cells[end.y][end.x].classList.remove('end');
+                        endCell.classList.remove('end');
                         end = { x: +x, y: +y };
-                        cells[end.y][end.x].classList.add('end');
+                        endCell = cells[y][x];
+                        endCell.classList.add('end');
                         restart();
                     },
                     next: function () {
@@ -259,7 +304,7 @@
                             } else {
                                 for (const neighbor of getNeighbors(current)) {
                                     if (!closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) {
-                                        const g = current.g + 1;
+                                        const g = current.g + heuristic(current, neighbor);
                                         const h = heuristic(neighbor, end);
                                         const f = g + h;
                                         const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
@@ -269,7 +314,7 @@
                                             const parentAngle = Math.atan2(neighbor.y - current.y, neighbor.x - current.x) - 0.5 * Math.PI;
                                             neighborCell.style = `--angle:${parentAngle}rad`
                                             openSet.push({ ...neighbor, g, h, f, parent: current });
-                                            neighborCell.querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                            neighborCell.querySelector('.data').innerText = `G:${g.toFixed(2)}\nH:${h.toFixed(2)}\nF:${f.toFixed(2)}`;
                                             neighborCell.classList.add('open');
                                         } else if (g < existing.g) {
                                             const parentAngle = Math.atan2(neighbor.y - current.y, neighbor.x - current.x) - 0.5 * Math.PI;
@@ -278,7 +323,7 @@
                                             existing.h = h;
                                             existing.f = f;
                                             existing.parent = current;
-                                            neighborCell.querySelector('.data').innerText = `G:${g}\nH:${h}\nF:${f}`;
+                                            neighborCell.querySelector('.data').innerText = `G:${g.toFixed(2)}\nH:${h.toFixed(2)}\nF:${f.toFixed(2)}`;
                                         }
                                     }
                                 }
@@ -318,12 +363,11 @@
                 }
                 astar.restart();
             };
-            grid.onmousedown = function(e) {
+            grid.onmousedown = function (e) {
                 var cell = e.target.closest('.cell');
                 if (cell && e.buttons === 1) {
                     if (grid.classList.contains('blockMode')
-                        && cell.classList.contains('cell'))
-                    {
+                        && cell.classList.contains('cell')) {
                         astar.restart();
                         if (cell.classList.contains('blocked')) {
                             cell.classList.remove('blocked');
@@ -341,17 +385,17 @@
                     }
                 }
             }
-            grid.onmouseup = function() { grid.onmouseover = null; }
-            grid.onmouseleave = function() { grid.onmouseover = null; }
+            grid.onmouseup = function () { grid.onmouseover = null; }
+            grid.onmouseleave = function () { grid.onmouseover = null; }
             function startBlockingTiles() {
-                grid.onmouseover = function(e) {
+                grid.onmouseover = function (e) {
                     if (e.target.classList.contains('cell') && !e.target.classList.contains('blocked')) {
                         e.target.classList.add('blocked');
                     }
                 }
             }
             function startUnblockingTiles() {
-                grid.onmouseover = function(e) {
+                grid.onmouseover = function (e) {
                     if (e.target.classList.contains('cell') && e.target.classList.contains('blocked')) {
                         e.target.classList.remove('blocked');
                     }
@@ -372,7 +416,15 @@
                 }
             }
 
-            document.querySelector(':checked').onchange();
+            mode.onchange = function (e) {
+                switchMode(e.target.value);
+            }
+            neighborsSelect.onchange = function (e) {
+                getNeighbors = e.currentTarget.value === '8' ? getAllNeighbors : getAdjacentNeighbors;
+            }
+            heuristicSelect.onchange = function (e) {
+                heuristic = e.currentTarget.value === 'steps' ? stepHeuristic : distanceHeuristic;
+            }
         </script>
     </body>
 
