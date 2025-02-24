@@ -425,6 +425,8 @@
             heuristicSelect.onchange = function (e) {
                 heuristic = e.currentTarget.value === 'steps' ? stepHeuristic : distanceHeuristic;
             }
+
+            switchMode(modeSelect.value);
         </script>
     </body>
 
