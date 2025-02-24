@@ -109,6 +109,9 @@
     </head>
 
     <body>
+        <input id="startCell" type="hidden" value="[0,0]" >
+        <input id="endCell" type="hidden" value="[9,9]" >
+        <input id="blockedCells" type="hidden" value="[[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]]" >
         <div class="flex">
             <div class="modeMenu">
                 <div>
@@ -143,7 +146,7 @@
             <button id="clearAll">Clear All</button>
         </div>
         <script>
-            function switchMode(mode) {
+            function setCursorMode(mode) {
                 grid.classList.remove('startMode', 'endMode', 'blockMode');
                 mode !== 'defaultMode' && grid.classList.add(mode);
             }
@@ -160,11 +163,13 @@
             }
 
             const gridSize = 10;
-            const start = { x: 0, y: 0 };
-            const end = { x: 9, y: 9 };
+            const [startX, startY] = JSON.parse(document.getElementById('startCell').value);
+            const [endX, endY] = JSON.parse(document.getElementById('endCell').value);
+            const start =  { x: +startX, y: +startY };
+            const end = { x: +endX, y: +endY };
             const grid = document.getElementById("grid");
             const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
-            const blockedCells = [[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]].map(([x, y]) => ({ x, y }));
+            const blockedCells = JSON.parse(document.getElementById('blockedCells').value).map(([x, y]) => ({ x, y }));
 
             function createGrid() {
                 cells.forEach((col, y) => {
@@ -202,7 +207,7 @@
             }
 
             function stepHeuristic(a, b) {
-                return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+                return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
             }
 
             function distanceHeuristic(a, b) {
@@ -345,12 +350,7 @@
             }
 
             function toggleBlock(x, y) {
-                const classes = cells[y][x].classList;
-                if (classes.contains('blocked')) {
-                    classes.remove('blocked');
-                } else {
-                    classes.add('blocked');
-                }
+                cells[y][x].classList.toggle('blocked');
                 astar.restart();
             }
 
@@ -369,12 +369,10 @@
                     if (grid.classList.contains('blockMode')
                         && cell.classList.contains('cell')) {
                         astar.restart();
-                        if (cell.classList.contains('blocked')) {
-                            cell.classList.remove('blocked');
-                            startUnblockingTiles();
-                        } else {
-                            cell.classList.add('blocked');
+                        if (cell.classList.toggle('blocked')) {
                             startBlockingTiles();
+                        } else {
+                            startUnblockingTiles();
                         }
                     } else if (grid.classList.contains('startMode')) {
                         setStart(cell.dataset.x, cell.dataset.y);
@@ -417,7 +415,7 @@
             }
 
             mode.onchange = function (e) {
-                switchMode(e.target.value);
+                setCursorMode(e.target.value);
             }
             neighborsSelect.onchange = function (e) {
                 getNeighbors = e.currentTarget.value === '8' ? getAllNeighbors : getAdjacentNeighbors;
@@ -426,7 +424,13 @@
                 heuristic = e.currentTarget.value === 'steps' ? stepHeuristic : distanceHeuristic;
             }
 
-            switchMode(modeSelect.value);
+            window.onbeforeunload = function() {
+                document.getElementById('startCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('start')[0].dataset).map(([,i]) => i));
+                document.getElementById('endCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('end')[0].dataset).map(([,i]) => i));
+                document.getElementById('blockedCells').value = JSON.stringify([...document.getElementsByClassName('blocked')].map(e => [+e.dataset.x, +e.dataset.y]));
+            }
+
+            setCursorMode(modeSelect.value);
         </script>
     </body>
 
