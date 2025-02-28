@@ -40,12 +40,14 @@
                 border: 1px solid #000;
                 position: relative;
                 overflow: hidden;
+                transition: background-color 0.1s ease;
             }
 
             .cell .arrow {
                 display: none;
                 rotate: var(--angle);
                 text-align: center;
+                transition: rotate 0.5s ease;
             }
 
             .cell .data:not(:empty)+.arrow {
@@ -58,7 +60,7 @@
             }
 
             .cell.open {
-                background-color: rgb(255, 255, 160);
+                background-color: rgb(255, 230, 155);
             }
 
             .cell.closed {
@@ -72,7 +74,8 @@
 
             .cell.path,
             .cell.end.closed {
-                background-color: forestgreen;
+                background-color: #0eac44;
+                transition: background-color 0.5s cubic-bezier(.27,-0.71,.27,1.55), outline 0.1s linear;
             }
 
             .cell.blocked {
