@@ -20,16 +20,17 @@
                 display: flex;
             }
 
-            .modeMenu {
-                display: flex;
+            .col {
                 flex-direction: column;
-                align-items: end;
+            }
+
+            .center {
+                align-self: center;
             }
 
             .grid {
                 display: grid;
                 grid-template-columns: repeat(10, minmax(9vh, 1fr));
-                grid-gap: 2px;
                 box-sizing: border-box;
                 user-select: none;
             }
@@ -113,10 +114,15 @@
         <input id="endCell" type="hidden" value="[9,9]" >
         <input id="blockedCells" type="hidden" value="[[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]]" >
         <div class="flex">
-            <div class="modeMenu">
-                <div>
+            <div class="flex col">
+                <div class="center">
+                    <button id="stepButton" class="playbackMode" value="step" title="Step" onclick="playStep()">⏯</button>
+                    <button id="playButton" class="playbackMode" value="play" title="Play" onclick="startAutoplay()">▶</button>
+                    <button id="completeButton" class="playbackMode" value="complete" title="Autocomplete" onclick="startAutoComplete()" disabled="">⏭</button>
+                </div>
+                <div class="flex col">
                     <label>Mode:</label>
-                    <select id="mode">
+                    <select id="mode" size="4">
                         <option value="defaultMode">0✳ Mixed</option>
                         <option value="startMode">1⭐ Mark start</option>
                         <option value="endMode">2🏁 Mark end</option>
@@ -140,16 +146,15 @@
             </div>
             <div class="grid" id="grid"></div>
         </div>
-        <div>
-            <button id="nextStep">Next step</button>
-            <button id="complete">Complete</button>
-            <button id="clearAll">Clear All</button>
-        </div>
         <script>
             function setCursorMode(mode) {
                 grid.classList.remove('startMode', 'endMode', 'blockMode');
                 mode !== 'defaultMode' && grid.classList.add(mode);
             }
+
+            const stepButton = document.getElementById('stepButton');
+            const playButton = document.getElementById('playButton');
+            const completeButton = document.getElementById('completeButton');
             const modeSelect = document.getElementById('mode');
             const heuristicSelect = document.getElementById('heuristic');
             const neighborsSelect = document.getElementById('neighbors');
@@ -207,7 +212,7 @@
             }
 
             function stepHeuristic(a, b) {
-                return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+                return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
             }
 
             function distanceHeuristic(a, b) {
@@ -252,10 +257,12 @@
                 let startCell = cells[start.y][start.x];
                 let endCell = cells[end.y][end.x];
                 let numSteps = 0;
+                let completed = false;
                 const openSet = [{ x: start.x, y: start.y, g: 0, h: heuristic(start, end), f: 0, parent: null }];
                 const closedSet = [];
 
                 function restart() {
+                    completed = false;
                     numSteps = 0;
                     openSet.splice(0);
                     openSet.push({ x: start.x, y: start.y, g: 0, h: heuristic(start, end), parent: null });
@@ -272,6 +279,7 @@
 
                 return {
                     restart,
+                    isComplete: function() { return completed || !openSet.length; },
                     setStart: function (x, y) {
                         startCell.classList.remove('start');
                         start = { x: +x, y: +y };
@@ -287,11 +295,8 @@
                         restart();
                     },
                     next: function () {
-                        numSteps++;
-                        if (openSet.length === 0) {
-                            alert('No solution found');
-                            return 'done';
-                        } else {
+                        if (!completed && openSet.length) {
+                            numSteps++;
                             openSet.sort((a, b) => a.f - b.f || a.h - b.h);
                             const current = openSet.shift();
                             closedSet.push(current);
@@ -304,12 +309,11 @@
                                 for (let parent = current.parent; parent; parent = parent.parent) {
                                     cells[parent.y][parent.x].classList.add("path");
                                 }
-                                alert(`Solution found in ${numSteps} steps.`);
-                                return 'done';
+                                completed = true;
                             } else {
                                 for (const neighbor of getNeighbors(current)) {
                                     if (!closedSet.some(c => c.x === neighbor.x && c.y === neighbor.y)) {
-                                        const g = current.g + heuristic(current, neighbor);
+                                        const g = current.g + distanceHeuristic(current, neighbor);
                                         const h = heuristic(neighbor, end);
                                         const f = g + h;
                                         const existing = openSet.find(c => c.x === neighbor.x && c.y === neighbor.y);
@@ -343,10 +347,18 @@
 
             function setStart(x, y) {
                 astar.setStart(x, y);
+
+                if (completeButton.disabled) {
+                    autoComplete();
+                }
             }
 
             function setEnd(x, y) {
                 astar.setEnd(x, y);
+
+                if (completeButton.disabled) {
+                    autoComplete();
+                }
             }
 
             function toggleBlock(x, y) {
@@ -354,25 +366,68 @@
                 astar.restart();
             }
 
-            document.getElementById('nextStep').onclick = astar.next;
-            document.getElementById('complete').onclick = () => { while (astar.next() !== 'done'); };
-            document.getElementById('clearAll').onclick = function () {
-                var blockedCells = [...document.getElementsByClassName('blocked')];
-                for (var cell of blockedCells) {
-                    cell.classList.remove('blocked');
+            function playStep() {
+                if (autoplayInterval) {
+                    clearInterval(autoplayInterval);
+                    autoplayInterval = null;
                 }
-                astar.restart();
-            };
+                playButton.disabled = false;
+                completeButton.disabled = false;
+                if (astar.isComplete()) {
+                    astar.restart();
+                }
+                astar.next();
+            }
+
+            let autoplayInterval = null;
+            function startAutoplay() {
+                playButton.disabled = true;
+                completeButton.disabled = false;
+                if (autoplayInterval) {
+                    clearInterval(autoplayInterval);
+                }
+                if (astar.isComplete()) {
+                    astar.restart();
+                }
+                autoplayInterval = setInterval(function () {
+                    if (!astar.isComplete()) {
+                        astar.next();
+                    } else {
+                        clearInterval(autoplayInterval);
+                        autoplayInterval = setInterval(startAutoplay, 1000);
+                    }
+                }, 100);
+            }
+
+            function startAutoComplete() {
+                if (autoplayInterval) {
+                    clearInterval(autoplayInterval);
+                    autoplayInterval = null;
+                }
+                playButton.disabled = false;
+                completeButton.disabled = true;
+                autoComplete();
+            }
+
+            function autoComplete() {
+                while (!astar.isComplete()) {
+                    astar.next();
+                }
+            }
+
             grid.onmousedown = function (e) {
                 var cell = e.target.closest('.cell');
                 if (cell && e.buttons === 1) {
                     if (grid.classList.contains('blockMode')
                         && cell.classList.contains('cell')) {
-                        astar.restart();
                         if (cell.classList.toggle('blocked')) {
                             startBlockingTiles();
                         } else {
                             startUnblockingTiles();
+                        }
+                        astar.restart();
+                        if (completeButton.disabled) {
+                            startAutoComplete();
                         }
                     } else if (grid.classList.contains('startMode')) {
                         setStart(cell.dataset.x, cell.dataset.y);
@@ -389,6 +444,10 @@
                 grid.onmouseover = function (e) {
                     if (e.target.classList.contains('cell') && !e.target.classList.contains('blocked')) {
                         e.target.classList.add('blocked');
+                        astar.restart();
+                        if (completeButton.disabled) {
+                            startAutoComplete();
+                        }
                     }
                 }
             }
@@ -396,6 +455,10 @@
                 grid.onmouseover = function (e) {
                     if (e.target.classList.contains('cell') && e.target.classList.contains('blocked')) {
                         e.target.classList.remove('blocked');
+                        astar.restart();
+                        if (completeButton.disabled) {
+                            startAutoComplete();
+                        }
                     }
                 }
             }
@@ -431,6 +494,9 @@
             }
 
             setCursorMode(modeSelect.value);
+            if (completeButton.disabled) {
+                startAutoComplete();
+            }
         </script>
     </body>
 
