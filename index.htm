@@ -58,7 +58,7 @@
             }
 
             .cell.open {
-                background-color: rgba(0, 128, 0, 0.5);
+                background-color: rgb(255, 255, 160);
             }
 
             .cell.closed {
@@ -442,8 +442,9 @@
             grid.onmouseleave = function () { grid.onmouseover = null; }
             function startBlockingTiles() {
                 grid.onmouseover = function (e) {
-                    if (e.target.classList.contains('cell') && !e.target.classList.contains('blocked')) {
-                        e.target.classList.add('blocked');
+                    var cell = e.target.closest('.cell');
+                    if (cell && !cell.classList.contains('blocked')) {
+                        cell.classList.add('blocked');
                         astar.restart();
                         if (completeButton.disabled) {
                             startAutoComplete();
@@ -453,8 +454,9 @@
             }
             function startUnblockingTiles() {
                 grid.onmouseover = function (e) {
-                    if (e.target.classList.contains('cell') && e.target.classList.contains('blocked')) {
-                        e.target.classList.remove('blocked');
+                    var cell = e.target.closest('.cell');
+                    if (cell && cell.classList.contains('blocked')) {
+                        cell.classList.remove('blocked');
                         astar.restart();
                         if (completeButton.disabled) {
                             startAutoComplete();
@@ -464,15 +466,17 @@
             }
             function startMarkStart() {
                 grid.onmouseover = function (e) {
-                    if (e.target.classList.contains('cell')) {
-                        setStart(e.target.dataset.x, e.target.dataset.y);
+                    var cell = e.target.closest('.cell');
+                    if (cell) {
+                        setStart(cell.dataset.x, cell.dataset.y);
                     }
                 }
             }
             function startMarkFinish() {
                 grid.onmouseover = function (e) {
-                    if (e.target.classList.contains('cell')) {
-                        setEnd(e.target.dataset.x, e.target.dataset.y);
+                    var cell = e.target.closest('.cell');
+                    if (cell) {
+                        setEnd(cell.dataset.x, cell.dataset.y);
                     }
                 }
             }
