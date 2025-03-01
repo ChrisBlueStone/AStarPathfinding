@@ -520,9 +520,19 @@
             }
             neighborsSelect.onchange = function (e) {
                 getNeighbors = e.currentTarget.value === '8' ? getAllNeighbors : getAdjacentNeighbors;
+
+                astar.restart()
+                if (completeButton.disabled) {
+                    autoComplete();
+                }
             }
             heuristicSelect.onchange = function (e) {
                 heuristic = e.currentTarget.value === 'steps' ? stepHeuristic : distanceHeuristic;
+
+                astar.restart()
+                if (completeButton.disabled) {
+                    autoComplete();
+                }
             }
 
             window.onbeforeunload = function () {
