@@ -144,23 +144,22 @@
                         onclick="startAutoComplete()">⏭</button>
                 </div>
                 <div class="flex col">
-                    <label>Mode:</label>
-                    <select id="mode" size="4">
-                        <option value="defaultMode">0✳ Mixed</option>
-                        <option value="startMode">1⭐ Mark start</option>
-                        <option value="endMode">2🏁 Mark end</option>
-                        <option value="blockMode" selected="">3🏴 Block</option>
+                    <label for="mode">Cursor Mode:</label>
+                    <select id="mode" size="3">
+                        <option value="startMode">⭐ Mark start (1)</option>
+                        <option value="endMode">🏁 Mark end (2)</option>
+                        <option value="blockMode" selected="">🏴 Block (3)</option>
                     </select>
                 </div>
                 <div>
-                    <label>Neighbors:</label>
+                    <label for="neighbors">Neighbors:</label>
                     <select id="neighbors">
                         <option value="4" selected="">4</option>
                         <option value="8">8</option>
                     </select>
                 </div>
                 <div>
-                    <label>Heuristic:</label>
+                    <label for="heuristic">Heuristic:</label>
                     <select id="heuristic">
                         <option value="steps" selected="">Steps</option>
                         <option value="distance">Distance</option>
@@ -172,7 +171,7 @@
         <script>
             function setCursorMode(mode) {
                 grid.classList.remove('startMode', 'endMode', 'blockMode');
-                mode !== 'defaultMode' && grid.classList.add(mode);
+                grid.classList.add(mode);
             }
 
             const stepButton = document.getElementById('stepButton');
@@ -183,7 +182,7 @@
             const neighborsSelect = document.getElementById('neighbors');
 
             document.onkeypress = function (e) {
-                const option = modeSelect.children[e.key]
+                const option = modeSelect.children[e.key - 1]
                 if (option) {
                     option.selected = true;
                     modeSelect.dispatchEvent(new Event('change'));
@@ -419,7 +418,7 @@
                         astar.next();
                     } else {
                         clearInterval(autoplayInterval);
-                        autoplayInterval = setInterval(startAutoplay, 1000);
+                        autoplayInterval = setInterval(startAutoplay, 2000);
                     }
                 }, 100);
             }
@@ -533,9 +532,6 @@
             }
 
             setCursorMode(modeSelect.value);
-            if (completeButton.disabled) {
-                startAutoComplete();
-            }
         </script>
     </body>
 
