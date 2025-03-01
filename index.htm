@@ -28,6 +28,10 @@
                 align-self: center;
             }
 
+            .hide {
+                display: none;
+            }
+
             .grid {
                 display: grid;
                 grid-template-columns: repeat(10, minmax(9vh, 1fr));
@@ -72,10 +76,23 @@
                 color: white;
             }
 
+            @keyframes pathComplete {
+                0% {
+                    background-color: rgba(255, 0, 0, 0.25)
+                }
+
+                10% {
+                    background-color: #fff;
+                }
+
+                100% {
+                    background-color: #0eac44;
+                }
+            }
+
             .cell.path,
             .cell.end.closed {
-                background-color: #0eac44;
-                transition: background-color 0.5s cubic-bezier(.27,-0.71,.27,1.55), outline 0.1s linear;
+                animation: 1s ease-in 0s 1 forwards running pathComplete;
             }
 
             .cell.blocked {
@@ -113,15 +130,18 @@
     </head>
 
     <body>
-        <input id="startCell" type="hidden" value="[0,0]" >
-        <input id="endCell" type="hidden" value="[9,9]" >
-        <input id="blockedCells" type="hidden" value="[[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]]" >
+        <input id="startCell" type="hidden" value="[0, 0]">
+        <input id="endCell" type="hidden" value="[9, 9]">
+        <input id="blockedCells" type="hidden"
+            value="[[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]]">
         <div class="flex">
             <div class="flex col">
                 <div class="center">
-                    <button id="stepButton" class="playbackMode" value="step" title="Step" onclick="playStep()">⏯</button>
-                    <button id="playButton" class="playbackMode" value="play" title="Play" onclick="startAutoplay()">▶</button>
-                    <button id="completeButton" class="playbackMode" value="complete" title="Autocomplete" onclick="startAutoComplete()" disabled="">⏭</button>
+                    <button id="stepButton" value="step" title="Step" onclick="playStep()">⏯</button>
+                    <button id="pauseButton" class="hide" value="pause" title="Pause" onclick="pause()">⏸</button>
+                    <button id="playButton" value="play" title="Play" onclick="startAutoplay()">▶</button>
+                    <button id="completeButton" value="complete" title="Autocomplete"
+                        onclick="startAutoComplete()">⏭</button>
                 </div>
                 <div class="flex col">
                     <label>Mode:</label>
@@ -173,7 +193,7 @@
             const gridSize = 10;
             const [startX, startY] = JSON.parse(document.getElementById('startCell').value);
             const [endX, endY] = JSON.parse(document.getElementById('endCell').value);
-            const start =  { x: +startX, y: +startY };
+            const start = { x: +startX, y: +startY };
             const end = { x: +endX, y: +endY };
             const grid = document.getElementById("grid");
             const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
@@ -282,7 +302,7 @@
 
                 return {
                     restart,
-                    isComplete: function() { return completed || !openSet.length; },
+                    isComplete: function () { return completed || !openSet.length; },
                     setStart: function (x, y) {
                         startCell.classList.remove('start');
                         start = { x: +x, y: +y };
@@ -374,7 +394,8 @@
                     clearInterval(autoplayInterval);
                     autoplayInterval = null;
                 }
-                playButton.disabled = false;
+                playButton.classList.remove('hide');
+                pauseButton.classList.add('hide');
                 completeButton.disabled = false;
                 if (astar.isComplete()) {
                     astar.restart();
@@ -384,7 +405,8 @@
 
             let autoplayInterval = null;
             function startAutoplay() {
-                playButton.disabled = true;
+                playButton.classList.add('hide');
+                pauseButton.classList.remove('hide');
                 completeButton.disabled = false;
                 if (autoplayInterval) {
                     clearInterval(autoplayInterval);
@@ -407,9 +429,19 @@
                     clearInterval(autoplayInterval);
                     autoplayInterval = null;
                 }
-                playButton.disabled = false;
+                playButton.classList.remove('hide');
+                pauseButton.classList.add('hide');
                 completeButton.disabled = true;
                 autoComplete();
+            }
+
+            function pause() {
+                if (autoplayInterval) {
+                    clearInterval(autoplayInterval);
+                    autoplayInterval = null;
+                }
+                playButton.classList.remove('hide');
+                pauseButton.classList.add('hide');
             }
 
             function autoComplete() {
@@ -494,9 +526,9 @@
                 heuristic = e.currentTarget.value === 'steps' ? stepHeuristic : distanceHeuristic;
             }
 
-            window.onbeforeunload = function() {
-                document.getElementById('startCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('start')[0].dataset).map(([,i]) => i));
-                document.getElementById('endCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('end')[0].dataset).map(([,i]) => i));
+            window.onbeforeunload = function () {
+                document.getElementById('startCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('start')[0].dataset).map(([, i]) => i));
+                document.getElementById('endCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('end')[0].dataset).map(([, i]) => i));
                 document.getElementById('blockedCells').value = JSON.stringify([...document.getElementsByClassName('blocked')].map(e => [+e.dataset.x, +e.dataset.y]));
             }
 
