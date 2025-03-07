@@ -16,12 +16,22 @@
                 background-color: #f4f4f4;
             }
 
+            .mainContainer {
+                display: flex;
+                width: 100%;
+                height: 100%;
+            }
+
             .flex {
                 display: flex;
             }
 
             .col {
                 flex-direction: column;
+            }
+
+            .options {
+                flex-shrink: 0;
             }
 
             .controls {
@@ -31,6 +41,7 @@
                 overflow: hidden;
 
                 button {
+                    width: 0;
                     flex-grow: 1;
                     aspect-ratio: 1;
                 }
@@ -41,10 +52,15 @@
             }
 
             .grid {
+                --columns: 10;
+                --rows: 10;
+
+                flex-grow: 1;
                 display: grid;
-                grid-template-columns: repeat(10, minmax(9vh, 1fr));
+                grid-template-columns: repeat(var(--columns), calc(100%/var(--columns)));
                 box-sizing: border-box;
                 user-select: none;
+                align-content: center;
             }
 
             .cell {
@@ -53,6 +69,7 @@
                 position: relative;
                 overflow: hidden;
                 transition: background-color 0.1s ease;
+                background: white;
             }
 
             .arrow {
@@ -69,6 +86,13 @@
             .cell.end {
                 background-color: red;
                 color: white;
+
+                &::after {
+                    content: '🏁';
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                }
             }
 
             .cell.open {
@@ -76,12 +100,19 @@
             }
 
             .cell.closed {
-                background-color: rgba(255, 0, 0, 0.25);
+                background-color: rgb(247, 183, 183);
             }
 
             .cell.start {
                 background-color: blue;
                 color: white;
+
+                &::after {
+                    content: '⭐';
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                }
             }
 
             @keyframes pathComplete {
@@ -123,12 +154,12 @@
     </head>
 
     <body>
-        <input id="startCell" type="hidden" value="[0, 0]">
-        <input id="endCell" type="hidden" value="[9, 9]">
-        <input id="blockedCells" type="hidden"
+        <input id="startCoords" type="hidden" value="[0, 0]">
+        <input id="endCoords" type="hidden" value="[9, 9]">
+        <input id="blockedCoords" type="hidden"
             value="[[3, 0], [3, 1], [3, 2], [3, 3], [7, 4], [7, 5], [7, 6], [4, 7], [5, 7], [6, 7], [7, 7]]">
-        <div class="flex">
-            <div class="flex col">
+        <div class="mainContainer">
+            <div class="flex col options">
                 <div class="controls">
                     <button id="stepButton" value="step" title="Step">⏯</button>
                     <button id="pauseButton" class="hide" value="pause" title="Pause">⏸</button>
@@ -157,6 +188,14 @@
                         <option value="distance">Distance</option>
                     </select>
                 </div>
+                <div>
+                    <label for="numColumns">Width:&nbsp;</label>
+                    <input id="numColumns" type="number" value="10" size="3" min="10" max="50">
+                </div>
+                <div>
+                    <label for="numRows">Height:&nbsp;</label>
+                    <input id="numRows" type="number" value="10" size="3" min="10" max="50">
+                </div>
             </div>
             <div class="grid" id="grid"></div>
         </div>
@@ -174,16 +213,20 @@
                 }
             }
 
-            const gridSize = 10;
-            const [startX, startY] = JSON.parse(document.getElementById('startCell').value);
-            const [endX, endY] = JSON.parse(document.getElementById('endCell').value);
-            const start = { x: +startX, y: +startY };
-            const end = { x: +endX, y: +endY };
-            const grid = document.getElementById('grid');
-            const cells = Array.from(Array(gridSize), () => Array(gridSize).fill());
-            const blockedCells = JSON.parse(document.getElementById('blockedCells').value).map(([x, y]) => ({ x, y }));
+            const start = { x: 0, y: 0 };
+            const end = { x: +numColumns.value - 1, y: +numRows.value - 1 };
+            const cells = [];
 
             function createGrid() {
+                const [startX, startY] = JSON.parse(startCoords.value);
+                const [endX, endY] = JSON.parse(endCoords.value);
+                [start.x, start.y] = [+startX || 0, +startY || 0];
+                [end.x, end.y] = [Math.min(+endX || Infinity, +numColumns.value - 1), Math.min(+endY || Infinity, +numRows.value - 1)];
+                const blockedCells = JSON.parse(blockedCoords.value).map(([x, y]) => ({ x, y }));
+
+                grid.style = `--rows:${+numRows.value}; --columns:${+numColumns.value};`;
+
+                cells.splice(0, cells.length, ...Array.from(Array(+numRows.value), () => Array(+numColumns.value).fill()));
                 cells.forEach((col, y) => {
                     col.forEach((_, x, array) => {
                         const cell = document.createElement("div");
@@ -200,13 +243,15 @@
 
                         cell.appendChild(data);
                         cell.appendChild(arrow);
-                        grid.appendChild(cell);
                         array[x] = cell;
                     });
                 });
+
                 cells[start.y][start.x].classList.add("start");
                 cells[end.y][end.x].classList.add("end");
-                blockedCells.forEach(({ x, y }) => cells[y][x].classList.add("blocked"));
+                blockedCells.forEach(({ x, y }) => cells[y]?.[x]?.classList?.add("blocked"));
+
+                grid.replaceChildren(...cells.flat());
             }
 
             function stepHeuristic(a, b) {
@@ -226,8 +271,8 @@
                     { x: node.x, y: node.y - 1 }
                 ].filter(n => n.x >= 0
                     && n.y >= 0
-                    && n.x < gridSize
-                    && n.y < gridSize
+                    && n.x < +numColumns.value
+                    && n.y < +numRows.value
                     && !cells[n.y][n.x].classList.contains("blocked"))
             }
 
@@ -243,8 +288,8 @@
                     { x: node.x - 1, y: node.y + 1 }
                 ].filter(n => n.x >= 0
                     && n.y >= 0
-                    && n.x < gridSize
-                    && n.y < gridSize
+                    && n.x < +numColumns.value
+                    && n.y < +numRows.value
                     && !cells[n.y][n.x].classList.contains("blocked"))
             }
 
@@ -252,8 +297,6 @@
             let heuristic = heuristicSelect.value === 'steps' ? stepHeuristic : distanceHeuristic;
 
             function findPath(start, end) {
-                let startCell = cells[start.y][start.x];
-                let endCell = cells[end.y][end.x];
                 let numSteps = 0;
                 let completed = false;
                 const openSet = [{ x: start.x, y: start.y, g: 0, h: heuristic(start, end), f: 0, parent: null }];
@@ -267,7 +310,7 @@
                     closedSet.splice(0);
 
                     [...document.getElementsByClassName('cell')].forEach(e => e.classList.remove('open', 'closed'));
-                    startCell.classList.add('open');
+                    cells[start.y][start.x].classList.add('open');
 
                     for (const cell of document.getElementsByClassName('data')) {
                         cell.innerText = '';
@@ -279,17 +322,11 @@
                     restart,
                     isComplete: function () { return completed || !openSet.length; },
                     setStart: function (x, y) {
-                        startCell.classList.remove('start');
                         start = { x: +x, y: +y };
-                        startCell = cells[y][x];
-                        startCell.classList.add('start');
                         restart();
                     },
                     setEnd: function (x, y) {
-                        endCell.classList.remove('end');
                         end = { x: +x, y: +y };
-                        endCell = cells[y][x];
-                        endCell.classList.add('end');
                         restart();
                     },
                     next: function () {
@@ -346,6 +383,10 @@
             function setStart(x, y) {
                 astar.setStart(x, y);
 
+                cells[start.y][start.x].classList.remove('start');
+                [start.x, start.y] = [x, y];
+                cells[y][x].classList.add('start');
+
                 if (completeButton.disabled) {
                     autoComplete();
                 }
@@ -353,6 +394,9 @@
 
             function setEnd(x, y) {
                 astar.setEnd(x, y);
+                cells[end.y][end.x].classList.remove('end');
+                [end.x, end.y] = [x, y];
+                cells[y][x].classList.add('end');
 
                 if (completeButton.disabled) {
                     autoComplete();
@@ -396,10 +440,10 @@
                             startAutoComplete();
                         }
                     } else if (grid.classList.contains('startMode')) {
-                        setStart(cell.dataset.x, cell.dataset.y);
+                        setStart(+cell.dataset.x, +cell.dataset.y);
                         startMarkStart();
                     } else if (grid.classList.contains('endMode')) {
-                        setEnd(cell.dataset.x, cell.dataset.y);
+                        setEnd(+cell.dataset.x, +cell.dataset.y);
                         startMarkFinish();
                     }
                 }
@@ -433,7 +477,7 @@
                 grid.onmouseover = function (e) {
                     var cell = e.target.closest('.cell');
                     if (cell) {
-                        setStart(cell.dataset.x, cell.dataset.y);
+                        setStart(+cell.dataset.x, +cell.dataset.y);
                     }
                 }
             }
@@ -441,7 +485,7 @@
                 grid.onmouseover = function (e) {
                     var cell = e.target.closest('.cell');
                     if (cell) {
-                        setEnd(cell.dataset.x, cell.dataset.y);
+                        setEnd(+cell.dataset.x, +cell.dataset.y);
                     }
                 }
             }
@@ -512,11 +556,21 @@
                 }
             }
 
-            window.onbeforeunload = function () {
-                document.getElementById('startCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('start')[0].dataset).map(([, i]) => i));
-                document.getElementById('endCell').value = JSON.stringify(Object.entries(document.getElementsByClassName('end')[0].dataset).map(([, i]) => i));
-                document.getElementById('blockedCells').value = JSON.stringify([...document.getElementsByClassName('blocked')].map(e => [+e.dataset.x, +e.dataset.y]));
+            function updateHiddenInputs() {
+                startCoords.value = JSON.stringify(Object.entries(document.getElementsByClassName('start')[0].dataset).map(([, i]) => i));
+                endCoords.value = JSON.stringify(Object.entries(document.getElementsByClassName('end')[0].dataset).map(([, i]) => i));
+                blockedCoords.value = JSON.stringify([...document.getElementsByClassName('blocked')].map(e => [+e.dataset.x, +e.dataset.y]));
             }
+
+            function recreateGrid() {
+                updateHiddenInputs();
+                createGrid();
+            }
+
+            numColumns.onchange = recreateGrid;
+            numRows.onchange = recreateGrid;
+
+            window.onbeforeunload = updateHiddenInputs;
 
             setCursorMode(modeSelect.value);
         </script>
